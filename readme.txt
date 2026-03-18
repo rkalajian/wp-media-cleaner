@@ -1,7 +1,7 @@
 === Simple Media Cleaner ===
 Contributors: robkalajian
 Requires at least: 6.0
-Tested up to: 6.7
+Tested up to: 6.9
 Stable tag: 1.4.0
 Requires PHP: 8.1
 License: GPL-2.0+
