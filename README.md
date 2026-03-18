@@ -57,4 +57,3 @@ Drop the `throwyo-media-cleaner/` folder into `wp-content/plugins/` and activate
 
 ### 1.0.0
 - Initial release
-# wp-media-cleaner

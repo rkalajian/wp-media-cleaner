@@ -371,16 +371,27 @@ function tymc_render_page(): void {
 
 		<!-- Floating selection bar -->
 		<div class="tymc-float-bar" id="tymc-float-bar" aria-live="polite" hidden>
-			<div class="tymc-float-bar-count">
-				<strong id="tymc-float-count">0</strong> selected
+			<!-- Selection state -->
+			<div id="tymc-float-selection">
+				<div class="tymc-float-bar-count">
+					<strong id="tymc-float-count">0</strong> selected
+				</div>
+				<div class="tymc-float-bar-divider"></div>
+				<div class="tymc-float-bar-actions">
+					<button id="tymc-deselect-btn" class="tymc-float-btn tymc-float-btn--deselect">Deselect all</button>
+					<button id="tymc-delete-btn" class="tymc-float-btn tymc-float-btn--delete">
+						<?php echo tymc_svg( 'trash', 13 ); ?>
+						Delete selected
+					</button>
+				</div>
 			</div>
-			<div class="tymc-float-bar-divider"></div>
-			<div class="tymc-float-bar-actions">
-				<button id="tymc-deselect-btn" class="tymc-float-btn tymc-float-btn--deselect">Deselect all</button>
-				<button id="tymc-delete-btn" class="tymc-float-btn tymc-float-btn--delete">
-					<?php echo tymc_svg( 'trash', 13 ); ?>
-					Delete selected
-				</button>
+			<!-- Delete progress state -->
+			<div id="tymc-float-progress" hidden>
+				<span id="tymc-float-progress-text">Deleting…</span>
+				<div class="tymc-float-progress-track">
+					<div class="tymc-float-progress-fill" id="tymc-float-progress-fill"></div>
+				</div>
+				<span id="tymc-float-progress-pct">0%</span>
 			</div>
 		</div>
 
@@ -435,8 +446,13 @@ function tymc_render_page(): void {
 		const emptyEl      = $('tymc-empty');
 		const emptyMsg     = $('tymc-empty-msg');
 		const gridEl       = $('tymc-grid');
-		const floatBar     = $('tymc-float-bar');
-		const floatCount   = $('tymc-float-count');
+		const floatBar            = $('tymc-float-bar');
+		const floatSelection      = $('tymc-float-selection');
+		const floatCount          = $('tymc-float-count');
+		const floatProgress       = $('tymc-float-progress');
+		const floatProgressFill   = $('tymc-float-progress-fill');
+		const floatProgressText   = $('tymc-float-progress-text');
+		const floatProgressPct    = $('tymc-float-progress-pct');
 		const statScanned  = $('stat-scanned');
 		const statUnused   = $('stat-unused');
 		const statSize     = $('stat-size');
@@ -658,34 +674,69 @@ function tymc_render_page(): void {
 		modal.addEventListener('click', e => { if (e.target === modal) modal.hidden = true; });
 		document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.hidden) modal.hidden = true; });
 
+		function setDeleteProgress(done, total) {
+			const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+			floatProgressFill.style.width = pct + '%';
+			floatProgressPct.textContent  = pct + '%';
+			floatProgressText.textContent = `Deleting — ${done.toLocaleString()} of ${total.toLocaleString()}`;
+		}
+
 		modalConfirm.addEventListener('click', async () => {
 			modal.hidden = true;
 
 			const sel = selectedCards();
 			const ids = sel.map(c => c.dataset.id);
+			const CHUNK = 50; // stay well under PHP's max_input_vars (default 1000)
+
+			// Switch float bar to progress mode — visible at all scroll positions.
+			floatSelection.hidden = true;
+			floatProgress.hidden  = false;
+			floatBar.hidden       = false;
+			floatBar.classList.add('is-visible');
+			setDeleteProgress(0, ids.length);
 
 			noticeEl.hidden = true;
-			progressWrap.hidden = false;
-			progressFill.classList.remove('is-done');
-			setProgress(0, `Deleting ${ids.length} file${ids.length !== 1 ? 's' : ''}…`);
 
-			let resp;
-			try {
-				resp = await post('tymc_delete', { ids });
-			} catch {
-				showBanner('error', 'Network error — some files may not have been removed.');
-				return;
+			let totalDeleted = 0;
+			const allFailed  = [];
+
+			for (let i = 0; i < ids.length; i += CHUNK) {
+				const chunk = ids.slice(i, i + CHUNK);
+				setDeleteProgress(i, ids.length);
+
+				let resp;
+				try {
+					resp = await post('tymc_delete', { ids: chunk });
+				} catch {
+					floatSelection.hidden = false;
+					floatProgress.hidden  = true;
+					showBanner('error', 'Network error — some files may not have been removed.');
+					updateFloatBar();
+					return;
+				}
+
+				if (!resp.success) {
+					floatSelection.hidden = false;
+					floatProgress.hidden  = true;
+					showBanner('error', 'Delete error: ' + (resp.data ?? 'unknown'));
+					updateFloatBar();
+					return;
+				}
+
+				totalDeleted += resp.data.deleted;
+				allFailed.push(...resp.data.failed);
 			}
 
-			setProgress(100, 'Deletion complete', true);
+			setDeleteProgress(ids.length, ids.length);
+			// Brief pause so user sees 100% before the bar disappears.
+			await new Promise(r => setTimeout(r, 400));
 
-			if (!resp.success) {
-				showBanner('error', 'Delete error: ' + (resp.data ?? 'unknown'));
-				return;
-			}
+			// Restore float bar to selection mode.
+			floatSelection.hidden = false;
+			floatProgress.hidden  = true;
+			floatProgressFill.style.width = '0%';
 
-			const { deleted, failed } = resp.data;
-			const failedSet = new Set(failed.map(String));
+			const failedSet = new Set(allFailed.map(String));
 
 			sel.forEach(card => {
 				if (!failedSet.has(card.dataset.id)) {
@@ -707,9 +758,9 @@ function tymc_render_page(): void {
 				updateFloatBar();
 				gridCountEl.textContent = allItems.length > 0 ? `(${allItems.length})` : '';
 
-				let msg = `Deleted <strong>${deleted}</strong> file${deleted !== 1 ? 's' : ''} — files, all WordPress-generated sizes, and database records removed.`;
-				if (failed.length) msg += ` <strong>${failed.length}</strong> could not be removed.`;
-				showBanner(failed.length ? 'error' : 'success', msg);
+				let msg = `Deleted <strong>${totalDeleted}</strong> file${totalDeleted !== 1 ? 's' : ''} — files, all WordPress-generated sizes, and database records removed.`;
+				if (allFailed.length) msg += ` <strong>${allFailed.length}</strong> could not be removed.`;
+				showBanner(allFailed.length ? 'error' : 'success', msg);
 
 				if (allItems.length === 0) {
 					resultsEl.hidden = true;
