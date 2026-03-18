@@ -7,7 +7,7 @@ Requires PHP: 8.1
 License: GPL-2.0+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-A WordPress admin plugin that scans the media library for unused attachments and permanently deletes them — files, all WordPress-generated sizes, and database records in one pass.
+Scans the media library for unused attachments and permanently deletes them — files, all WordPress-generated sizes, and database records.
 
 == Description ==
 

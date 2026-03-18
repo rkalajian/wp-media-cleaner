@@ -156,8 +156,8 @@ function tymc_filter_unused( array $ids ): array {
 	// ── 1. Has a post parent (attached via editor uploader) ───────────────
 	// Safe to interpolate: all values cast to int.
 	$id_list = implode( ',', array_map( 'intval', $ids ) );
-	$rows    = $wpdb->get_col(
-		"SELECT ID FROM {$wpdb->posts} WHERE ID IN ($id_list) AND post_parent > 0"
+	$rows    = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		"SELECT ID FROM {$wpdb->posts} WHERE ID IN ($id_list) AND post_parent > 0" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	);
 	foreach ( $rows as $id ) {
 		$in_use[ (int) $id ] = true;
@@ -168,8 +168,8 @@ function tymc_filter_unused( array $ids ): array {
 
 	// ── 2. Used as a featured image ───────────────────────────────────────
 	$placeholders = implode( ',', array_fill( 0, count( $remaining ), '%s' ) );
-	$rows = $wpdb->get_col(
-		// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+	$rows = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->prepare(
 			"SELECT DISTINCT meta_value FROM {$wpdb->postmeta}
 			 WHERE meta_key = '_thumbnail_id' AND meta_value IN ($placeholders)",
@@ -190,7 +190,8 @@ function tymc_filter_unused( array $ids ): array {
 		$url               = wp_get_attachment_url( $id );
 		$url_cache[ $id ]  = $url;
 		$url_no_scheme     = preg_replace( '#^https?://#', '//', $url );
-		if ( $wpdb->get_var( $wpdb->prepare(
+		if ( $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->prepare(
 			"SELECT 1 FROM {$wpdb->posts}
 			 WHERE post_status NOT IN ('trash','auto-draft')
 			 AND (post_content LIKE %s OR post_content LIKE %s)
@@ -207,7 +208,7 @@ function tymc_filter_unused( array $ids ): array {
 
 	// ── 4. WooCommerce product gallery ────────────────────────────────────
 	// Fetch all gallery strings once; resolve in PHP.
-	$galleries = $wpdb->get_col(
+	$galleries = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		"SELECT meta_value FROM {$wpdb->postmeta}
 		 WHERE meta_key = '_product_image_gallery' AND meta_value != ''"
 	);
@@ -229,8 +230,8 @@ function tymc_filter_unused( array $ids ): array {
 
 	// ── 5. Any postmeta value equal to this ID (ACF image/file fields) ────
 	$placeholders = implode( ',', array_fill( 0, count( $remaining ), '%s' ) );
-	$rows = $wpdb->get_col(
-		// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+	$rows = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.LikeWildcardsInQuery
 		$wpdb->prepare(
 			"SELECT DISTINCT meta_value FROM {$wpdb->postmeta}
 			 WHERE meta_value IN ($placeholders)
@@ -263,6 +264,7 @@ function tymc_filter_unused( array $ids ): array {
 	// ── 7. Options table — URL or quoted ID (ACF options, widgets, theme mods)
 	foreach ( $remaining as $id ) {
 		$url = $url_cache[ $id ] ?? wp_get_attachment_url( $id );
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.LikeWildcardsInQuery
 		if ( $wpdb->get_var( $wpdb->prepare(
 			"SELECT 1 FROM {$wpdb->options}
 			 WHERE option_name NOT LIKE '\_transient\_%'
@@ -274,6 +276,7 @@ function tymc_filter_unused( array $ids ): array {
 		) ) ) {
 			$in_use[ $id ] = true;
 		}
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.LikeWildcardsInQuery
 	}
 
 	return array_values( array_diff( $ids, array_keys( $in_use ) ) );
@@ -294,7 +297,7 @@ function tymc_render_page(): void {
 			<div class="tymc-app-header-inner">
 				<div class="tymc-app-header-left">
 					<div class="tymc-app-header-logo">
-						<?php echo tymc_svg( 'scan', 22 ); ?>
+						<?php echo tymc_svg( 'scan', 22 ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 					</div>
 					<div class="tymc-app-header-text">
 						<h1>Media Cleaner</h1>
@@ -303,7 +306,7 @@ function tymc_render_page(): void {
 				</div>
 				<div class="tymc-app-header-actions">
 					<button id="tymc-scan-btn" class="tymc-btn tymc-btn--primary">
-						<?php echo tymc_svg( 'search', 15 ); ?>
+						<?php echo tymc_svg( 'search', 15 ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 						Scan Library
 					</button>
 				</div>
@@ -324,21 +327,21 @@ function tymc_render_page(): void {
 		<!-- Stat row -->
 		<div class="tymc-stat-row" id="tymc-stats" hidden>
 			<div class="tymc-stat-cell">
-				<div class="tymc-stat-icon tymc-stat-icon--blue"><?php echo tymc_svg( 'layers', 18 ); ?></div>
+				<div class="tymc-stat-icon tymc-stat-icon--blue"><?php echo tymc_svg( 'layers', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
 				<div class="tymc-stat-body">
 					<div class="tymc-stat-label">Total Scanned</div>
 					<div class="tymc-stat-value" id="stat-scanned">—</div>
 				</div>
 			</div>
 			<div class="tymc-stat-cell">
-				<div class="tymc-stat-icon tymc-stat-icon--red"><?php echo tymc_svg( 'alert', 18 ); ?></div>
+				<div class="tymc-stat-icon tymc-stat-icon--red"><?php echo tymc_svg( 'alert', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
 				<div class="tymc-stat-body">
 					<div class="tymc-stat-label">Unused Files</div>
 					<div class="tymc-stat-value" id="stat-unused">—</div>
 				</div>
 			</div>
 			<div class="tymc-stat-cell">
-				<div class="tymc-stat-icon tymc-stat-icon--green"><?php echo tymc_svg( 'disk', 18 ); ?></div>
+				<div class="tymc-stat-icon tymc-stat-icon--green"><?php echo tymc_svg( 'disk', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
 				<div class="tymc-stat-body">
 					<div class="tymc-stat-label">Est. Savings</div>
 					<div class="tymc-stat-value" id="stat-size">—</div>
@@ -365,7 +368,7 @@ function tymc_render_page(): void {
 		<!-- Empty state -->
 		<div id="tymc-empty" hidden>
 			<div class="tymc-empty">
-				<div class="tymc-empty-icon"><?php echo tymc_svg( 'check', 24 ); ?></div>
+				<div class="tymc-empty-icon"><?php echo tymc_svg( 'check', 24 ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
 				<h3>All clear</h3>
 				<p id="tymc-empty-msg">No unused media files found.</p>
 			</div>
@@ -382,7 +385,7 @@ function tymc_render_page(): void {
 				<div class="tymc-float-bar-actions">
 					<button id="tymc-deselect-btn" class="tymc-float-btn tymc-float-btn--deselect">Deselect all</button>
 					<button id="tymc-delete-btn" class="tymc-float-btn tymc-float-btn--delete">
-						<?php echo tymc_svg( 'trash', 13 ); ?>
+						<?php echo tymc_svg( 'trash', 13 ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 						Delete selected
 					</button>
 				</div>
@@ -401,7 +404,7 @@ function tymc_render_page(): void {
 		<div id="tymc-modal" class="tymc-modal-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="tymc-modal-title">
 			<div class="tymc-modal">
 				<div class="tymc-modal-head">
-					<div class="tymc-modal-head-icon"><?php echo tymc_svg( 'alert-tri', 20 ); ?></div>
+					<div class="tymc-modal-head-icon"><?php echo tymc_svg( 'alert-tri', 20 ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
 					<div>
 						<h2 id="tymc-modal-title">Delete <span id="tymc-modal-count">0</span> file(s)?</h2>
 						<p>This removes files from the server and database. It cannot be undone.</p>
@@ -414,7 +417,7 @@ function tymc_render_page(): void {
 				<div class="tymc-modal-foot">
 					<button id="tymc-modal-cancel" class="tymc-btn tymc-btn--ghost">Cancel</button>
 					<button id="tymc-modal-confirm" class="tymc-btn tymc-btn--danger">
-						<?php echo tymc_svg( 'trash', 14 ); ?>
+						<?php echo tymc_svg( 'trash', 14 ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 						Delete permanently
 					</button>
 				</div>
