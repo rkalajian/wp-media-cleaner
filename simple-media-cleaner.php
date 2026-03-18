@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: WP Media Cleaner
+ * Plugin Name: Simple Media Cleaner
  * Description: Find and delete unused media library files.
  * Version: 1.2.0
  * Author: Rob Kalajian (https://robkalajian.me)

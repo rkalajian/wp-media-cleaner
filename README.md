@@ -1,4 +1,4 @@
-# WP Media Cleaner
+# Simple Media Cleaner
 
 A WordPress admin plugin that scans the media library for unused attachments and permanently deletes them - files, all WordPress-generated sizes, and database records in one pass.
 
@@ -39,7 +39,7 @@ An attachment is considered **in use** if any of the following are true:
 
 ## Installation
 
-Drop the `wp-media-cleaner/` folder into `wp-content/plugins/` and activate via **Plugins → Installed Plugins**. The tool appears under **Media → Media Cleaner**.
+Drop the `simple-media-cleaner/` folder into `wp-content/plugins/` and activate via **Plugins → Installed Plugins**. The tool appears under **Media → Media Cleaner**.
 
 ## Changelog
 
