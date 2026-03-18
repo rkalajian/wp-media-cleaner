@@ -2,13 +2,13 @@
 /**
  * Plugin Name: Simple Media Cleaner
  * Description: Find and delete unused media library files.
- * Version: 1.2.0
+ * Version: 1.4.0
  * Author: Rob Kalajian (https://robkalajian.me)
  */
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'TYMC_VERSION', '1.2.0' );
+define( 'TYMC_VERSION', '1.4.0' );
 define( 'TYMC_FILE', __FILE__ );
 
 // ---------------------------------------------------------------------------
