@@ -4,6 +4,8 @@
  * Description: Find and delete unused media library files.
  * Version: 1.4.0
  * Author: Rob Kalajian (https://robkalajian.me)
+ * License: GPL-2.0+
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  */
 
 defined( 'ABSPATH' ) || exit;

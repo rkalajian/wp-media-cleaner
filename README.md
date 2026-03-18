@@ -31,6 +31,10 @@ An attachment is considered **in use** if any of the following are true:
 | 6 | Set as site icon or custom logo | `get_option` / `get_theme_mod` |
 | 7 | URL or quoted ID appears in the options table | Per-item LIKE query |
 
+## License
+
+Simple Media Cleaner is licensed under the [GNU General Public License v2.0 or later](https://www.gnu.org/licenses/gpl-2.0.html) (GPL-2.0+), in accordance with WordPress plugin licensing requirements.
+
 ## Requirements
 
 - WordPress 6.0+
